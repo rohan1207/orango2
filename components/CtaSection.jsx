@@ -1,0 +1,146 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
+import LiveBlobs from "./LiveBlobs";
+import OrangeSliceDecor from "./OrangeSliceDecor";
+
+const models = [
+  {
+    kicker: "01",
+    title: "Host a machine",
+    copy: "You give us floor space and power. We install, restock and clean.",
+  },
+  {
+    kicker: "02",
+    title: "Run a city route",
+    copy: "Operate several machines across malls, offices or campuses with our support.",
+  },
+  {
+    kicker: "03",
+    title: "Grow with us",
+    copy: "Multi-site or investment talks for groups ready to scale the network.",
+  },
+];
+
+export default function CtaSection() {
+  const reduce = useReducedMotion();
+
+  return (
+    <section
+      aria-labelledby="operators-heading"
+      className="relative overflow-hidden bg-white py-14 sm:py-20 md:py-28"
+    >
+      <LiveBlobs />
+
+      <div className="relative z-10 mx-auto max-w-[1440px] px-5 md:px-8">
+        <div className="relative overflow-hidden rounded-[1.6rem] bg-[#EE6F28] px-5 py-10 text-white sm:rounded-[2rem] sm:px-6 sm:py-12 md:px-12 md:py-16">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(135deg, #FF9A4A 0%, #F07A32 50%, #EE6F28 100%)",
+            }}
+          />
+          <OrangeSliceDecor
+            className="-left-14 top-6 h-52 w-52 md:h-60 md:w-60"
+            opacity={0.2}
+            rotate={-15}
+          />
+          <OrangeSliceDecor
+            className="-right-16 bottom-0 h-56 w-56 md:h-64 md:w-64"
+            opacity={0.16}
+            rotate={22}
+          />
+
+          <div className="relative grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-[#FFE0B8]">
+                For malls, hospitals, offices &amp; gyms
+              </p>
+              <h2
+                id="operators-heading"
+                className="mt-4 max-w-2xl text-[clamp(2rem,4.2vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"
+              >
+                Bring OranGo to your venue.
+              </h2>
+              <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-white/85">
+                You provide the bay and power. OranGo installs the machine,
+                restocks fruit and cups, and keeps it clean. Visitors get fresh
+                juice in about 45 seconds.
+              </p>
+              <div className="mt-8 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-3">
+                <Link
+                  href="/contact?intent=survey"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-3.5 text-[15px] font-semibold text-[#8B3410] transition-colors hover:bg-[#FFF5ED] sm:w-auto"
+                >
+                  Book a site survey
+                </Link>
+                <Link
+                  href="/partners"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/55 px-7 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+                >
+                  Partners
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative mx-auto w-full max-w-sm">
+              <motion.div
+                animate={reduce ? undefined : { y: [0, -10, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Image
+                  src="/orango_cup.png"
+                  alt=""
+                  width={380}
+                  height={380}
+                  className="relative z-[1] mx-auto h-auto w-[70%] object-contain"
+                />
+              </motion.div>
+              <motion.div
+                animate={reduce ? undefined : { y: [0, 8, 0], rotate: [6, 10, 6] }}
+                transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -right-2 bottom-4 w-28 md:w-36"
+              >
+                <Image
+                  src="/orange3.png"
+                  alt=""
+                  width={200}
+                  height={200}
+                  className="h-auto w-full"
+                />
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {models.map((model, i) => (
+            <motion.article
+              key={model.title}
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.07 }}
+              whileHover={reduce ? undefined : { y: -5 }}
+              className="rounded-[1.6rem] border border-[#8B3410]/8 bg-white p-7"
+            >
+              <p className="text-[12px] font-semibold tracking-[0.16em] text-[#EE6F28]">
+                {model.kicker}
+              </p>
+              <h3 className="mt-3 text-[1.25rem] font-semibold tracking-[-0.02em] text-[#8B3410]">
+                {model.title}
+              </h3>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#8B3410]/65">
+                {model.copy}
+              </p>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

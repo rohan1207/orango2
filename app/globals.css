@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+:root {
+  --nav-h: 72px;
+  --background: #fffaf6;
+  --foreground: #8b3410;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --nav-h: 88px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --nav-h: 96px;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: #8b3410;
+  --color-ink-soft: #a84818;
+  --color-paper: #fffaf6;
+  --color-cream: #ffffff;
+  --color-orange: #ee6f28;
+  --color-orange-deep: #d45a18;
+  --color-pulp: #ffc89a;
+  --color-leaf: #d45a18;
+  --color-muted: #b8734a;
+  --color-line: rgb(238 111 40 / 0.14);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
+}
+
+html {
+  background: #fffaf6;
+  color: #8b3410;
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+html,
+body {
+  max-width: 100%;
+}
+
+body {
+  min-height: 100%;
+  overflow-x: clip;
+  width: 100%;
+  background: #fffaf6;
+  color: #8b3410;
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+#main {
+  overflow-x: clip;
+  width: 100%;
+  max-width: 100%;
+}
+
+::selection {
+  background: #ee6f28;
+  color: #ffffff;
+}
+
+.font-display {
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.uppercase {
+  letter-spacing: 0.06em;
+}
+
+.hero-track {
+  height: 500vh;
+}
+
+@media (min-width: 1082px) {
+  .hero-track {
+    height: 1200vh;
+  }
+}
+
+/* Sticky frame-sequence hero — tall track = fine-grained, silky scrub */
+.hero-frame-track {
+  height: 920vh;
+}
+
+@media (min-width: 768px) {
+  .hero-frame-track {
+    height: 1200vh;
+  }
+}
+
+/* New3dScrollHero uses GSAP scrub on sticky track — no pin spacer */
+
+.grain {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+.nav-link {
+  position: relative;
+}
+
+.marquee-track {
+  animation: marquee 36s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.faq-grid details {
+  border-bottom: 1px solid rgb(238 111 40 / 0.14);
+}
+
+.faq-grid summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-grid summary::-webkit-details-marker {
+  display: none;
+}
+
+input,
+textarea,
+select {
+  outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 1px #ee6f28;
+}
+
+model-viewer.machine-viewer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+  --poster-color: transparent;
+  outline: none;
+}
+
+model-viewer.machine-viewer:focus {
+  outline: none;
+}
