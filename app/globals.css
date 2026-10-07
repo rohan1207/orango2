@@ -90,14 +90,14 @@ body {
   }
 }
 
-/* Sticky frame-sequence hero — tall track = fine-grained, silky scrub */
+/* Sticky frame-sequence hero — tall track = more scroll per frame (204 frames) */
 .hero-frame-track {
-  height: 920vh;
+  height: 1400vh;
 }
 
 @media (min-width: 768px) {
   .hero-frame-track {
-    height: 1200vh;
+    height: 1800vh;
   }
 }
 

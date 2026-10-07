@@ -18,7 +18,7 @@ import {
   preloadFrames,
 } from "@/lib/frames";
 
-/** Soft exponential approach — silk without blur/crossfade. */
+/** Loose exponential follow — cinematic flow, sharp frames (no blur). */
 function easeToward(current, target, dt, lambda) {
   const delta = target - current;
   if (Math.abs(delta) < 0.0008) return target;
@@ -193,7 +193,7 @@ export default function New3dScrollHero({
       const canvas = canvasRef.current;
       const stage = stageRef.current;
       if (!canvas || !stage || !canvas.isConnected) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
       const w = Math.max(1, stage.clientWidth || window.innerWidth);
       const h = Math.max(1, stage.clientHeight || window.innerHeight);
       sizeRef.current = { w, h };
@@ -265,8 +265,8 @@ export default function New3dScrollHero({
           lastFrame,
         );
 
-        // Stage 1: absorb wheel/trackpad ticks into a stable target
-        const targetLambda = isMobileRef.current ? 14 : 12;
+        // Dual-stage loose ease: absorb wheel ticks, then glide the display
+        const targetLambda = isMobileRef.current ? 7 : 6;
         smoothedTargetRef.current = easeToward(
           smoothedTargetRef.current,
           rawTarget,
@@ -274,8 +274,7 @@ export default function New3dScrollHero({
           targetLambda,
         );
 
-        // Stage 2: display eases toward target — sharp frames, smooth timing
-        const displayLambda = isMobileRef.current ? 18 : 16;
+        const displayLambda = isMobileRef.current ? 9 : 8;
         const next = easeToward(
           displayedRef.current,
           smoothedTargetRef.current,
@@ -290,8 +289,8 @@ export default function New3dScrollHero({
         }
 
         boostTick += 1;
-        if (boostTick % 8 === 0) {
-          sessionRef.current?.boostAround?.(next, 36);
+        if (boostTick % 6 === 0) {
+          sessionRef.current?.boostAround?.(next, 40);
         }
       } catch {
         /* ignore */
@@ -311,6 +310,7 @@ export default function New3dScrollHero({
 
     const track = trackRef.current;
 
+    let scrollRaf = 0;
     const syncFromScroll = () => {
       try {
         const totalScroll = Math.max(
@@ -321,16 +321,23 @@ export default function New3dScrollHero({
         const scrolled = Math.min(totalScroll, Math.max(0, -top));
         const p = Math.min(1, Math.max(0, scrolled / totalScroll));
         const frameCount = Math.max(1, totalRef.current);
-        // Linear scroll → frame; dual-stage lerp + blend handle silkiness
+        // Direct scroll → frame map (canvas RAF eases lightly)
         targetRef.current = p * (frameCount - 1);
-        sessionRef.current?.boostAround?.(targetRef.current, 48);
         dirtyRef.current = true;
       } catch {
         /* ignore */
       }
     };
 
-    window.addEventListener("scroll", syncFromScroll, { passive: true });
+    const onScroll = () => {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        syncFromScroll();
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
     syncFromScroll();
 
     let resizeTimer = 0;
@@ -359,10 +366,11 @@ export default function New3dScrollHero({
     });
 
     return () => {
-      window.removeEventListener("scroll", syncFromScroll);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.visualViewport?.removeEventListener("resize", onResize);
       window.clearTimeout(resizeTimer);
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
     };
   }, [ready]);
 

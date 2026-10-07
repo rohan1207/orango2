@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "frames": "python -u scripts/generate_frames.py"
+    "frames": "python -u scripts/generate_frames.py",
+    "compress-frames": "node scripts/compress_frames.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
