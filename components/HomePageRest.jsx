@@ -12,9 +12,10 @@ import ContactTeaser from "@/components/ContactTeaser";
 export default function HomePageRest() {
   return (
     <>
+      {/* Client Section 1 — immediately after hero */}
+      <ProcessSteps />
       <BrandRibbon />
       <ExperienceSection />
-      <ProcessSteps />
       <HealthBenefits />
       <SmartTech />
       <TrustStrip />

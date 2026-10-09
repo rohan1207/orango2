@@ -3,8 +3,8 @@
 /**
  * Scroll-scrubbed frame hero — Drip-style smoothness with hard pin:
  * - Wait for ALL frames before unlocking page scroll
- * - GSAP pin + scrub so fast scroll cannot skip past the sequence
- * - rAF FRAME_LERP = 0.13 for silky frame glide
+ * - GSAP pin + long scrub so flings ease the playhead (no hard jumps)
+ * - rAF lerp with a max step so fast scroll never skips frame batches
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -23,16 +23,24 @@ import {
 
 gsap.registerPlugin(ScrollTrigger);
 
-/** ScrollTrigger: seconds for playhead to ease toward scroll */
-const SCROLL_SCRUB_SMOOTH_SEC = 0.55;
-/** rAF lerp toward fractional frame target; lower = silkier */
-const FRAME_LERP = 0.13;
-/** Viewport-heights of pin distance per ~25 frames (300 → ~12 screens) */
-const VH_PER_25_FRAMES = 1;
+/**
+ * ScrollTrigger scrub lag (seconds). Higher = playhead eases longer after a fling
+ * so target never teleports — this is why Drip stays smooth on fast scroll.
+ */
+const SCROLL_SCRUB_SMOOTH_SEC = 0.85;
+/** Soft follow toward scrubbed target */
+const FRAME_LERP = 0.12;
+/**
+ * Hard cap: never advance more than this many frames per rAF tick.
+ * Without this, lerp(0.12) on a huge target jump skips ~30+ frames/tick → choppy.
+ */
+const MAX_FRAMES_PER_TICK = 1.35;
 
+/** ~1.5 viewport-heights of pin per frame-group — long runway like Drip */
 function pinScrollDistance(frameCount) {
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const screens = Math.max(10, Math.ceil(frameCount / 25) * VH_PER_25_FRAMES);
+  // 300 frames → ~18 screens; keeps progress from finishing in one fling
+  const screens = Math.max(16, Math.round(frameCount * 0.06));
   return Math.round(vh * screens);
 }
 
@@ -228,7 +236,7 @@ export default function New3dScrollHero({
     paint(displayedRef.current);
   }, [ready]);
 
-  // rAF lerp — Drip FRAME_LERP = 0.13
+  // rAF lerp — walk through frames even on a fast fling (no batch-skip)
   useEffect(() => {
     if (!ready) return undefined;
     let raf = 0;
@@ -241,18 +249,23 @@ export default function New3dScrollHero({
         const lastFrame = Math.max(0, (totalRef.current || 1) - 1);
         const target = Math.min(Math.max(0, targetRef.current), lastFrame);
         const current = displayedRef.current;
-        const next = current + (target - current) * FRAME_LERP;
-        const snapped = Math.abs(next - target) < 0.04 ? target : next;
-        displayedRef.current = snapped;
+        let step = (target - current) * FRAME_LERP;
+        const abs = Math.abs(step);
+        if (abs > MAX_FRAMES_PER_TICK) {
+          step = Math.sign(step) * MAX_FRAMES_PER_TICK;
+        }
+        let next = current + step;
+        if (Math.abs(next - target) < 0.04) next = target;
+        displayedRef.current = next;
 
-        const displayFrame = Math.min(Math.round(snapped), lastFrame);
+        const displayFrame = Math.min(Math.round(next), lastFrame);
         if (displayFrame !== lastPaintedRef.current) {
           paint(displayFrame);
         }
 
         boostTick += 1;
         if (boostTick % 6 === 0) {
-          sessionRef.current?.boostAround?.(snapped, 40);
+          sessionRef.current?.boostAround?.(next, 48);
         }
       } catch {
         /* ignore */
@@ -291,6 +304,8 @@ export default function New3dScrollHero({
         pinSpacing: true,
         anticipatePin: 1,
         scrub: SCROLL_SCRUB_SMOOTH_SEC,
+        // Prevent ST from snapping scrub to end on a fast fling past the pin
+        fastScrollEnd: false,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           targetRef.current = self.progress * lastFrame;

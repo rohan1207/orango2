@@ -1,26 +1,28 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import LiveBlobs from "./LiveBlobs";
 import OrangeSliceDecor from "./OrangeSliceDecor";
 
-const models = [
+const blocks = [
   {
-    kicker: "01",
-    title: "Host a machine",
-    copy: "You give us floor space and power. We install, restock and clean.",
+    id: "location",
+    kicker: "For venues",
+    title: "Bring OranGo to your location",
+    copy: "You provide the space (~12sqft) and an electrical connection. We take care of the rest.",
+    cta: "Request a site survey",
+    href: "/contact?intent=survey#site-survey",
+    primary: true,
   },
   {
-    kicker: "02",
-    title: "Run a city route",
-    copy: "Operate several machines across malls, offices or campuses with our support.",
-  },
-  {
-    kicker: "03",
-    title: "Grow with us",
-    copy: "Multi-site or investment talks for groups ready to scale the network.",
+    id: "business",
+    kicker: "For entrepreneurs",
+    title: "Build a business with OranGo",
+    copy: "From young individual entrepreneurs looking to start small to groups looking for larger scale projects, OranGo offers opportunities to own and grow a business.",
+    cta: "Explore business opportunities",
+    href: "/business-opportunity",
+    primary: false,
   },
 ];
 
@@ -30,113 +32,81 @@ export default function CtaSection() {
   return (
     <section
       aria-labelledby="operators-heading"
-      className="relative overflow-hidden bg-white py-14 sm:py-20 md:py-28"
+      className="relative overflow-hidden bg-white py-14 sm:py-20 md:py-24"
     >
       <LiveBlobs />
+      <OrangeSliceDecor
+        className="right-[-5%] top-[8%] h-44 w-44 md:h-52 md:w-52"
+        opacity={0.14}
+        rotate={16}
+      />
+      <OrangeSliceDecor
+        className="bottom-[-6%] left-[-4%] h-40 w-40 md:h-48 md:w-48"
+        opacity={0.12}
+        rotate={-12}
+      />
 
       <div className="relative z-10 mx-auto max-w-[1440px] px-5 md:px-8">
-        <div className="relative overflow-hidden rounded-[1.6rem] bg-[#EE6F28] px-5 py-10 text-white sm:rounded-[2rem] sm:px-6 sm:py-12 md:px-12 md:py-16">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(135deg, #FF9A4A 0%, #F07A32 50%, #EE6F28 100%)",
-            }}
-          />
-          <OrangeSliceDecor
-            className="-left-14 top-6 h-52 w-52 md:h-60 md:w-60"
-            opacity={0.2}
-            rotate={-15}
-          />
-          <OrangeSliceDecor
-            className="-right-16 bottom-0 h-56 w-56 md:h-64 md:w-64"
-            opacity={0.16}
-            rotate={22}
-          />
+        <h2 id="operators-heading" className="sr-only">
+          Bring OranGo to your location or build a business with OranGo
+        </h2>
 
-          <div className="relative grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
-            <div>
-              <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-[#FFE0B8]">
-                For malls, hospitals, offices &amp; gyms
-              </p>
-              <h2
-                id="operators-heading"
-                className="mt-4 max-w-2xl text-[clamp(2rem,4.2vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"
-              >
-                Bring OranGo to your venue.
-              </h2>
-              <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-white/85">
-                You provide the bay and power. OranGo installs the machine,
-                restocks fruit and cups, and keeps it clean. Visitors get fresh
-                juice in about 45 seconds.
-              </p>
-              <div className="mt-8 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-3">
-                <Link
-                  href="/contact?intent=survey"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-3.5 text-[15px] font-semibold text-[#8B3410] transition-colors hover:bg-[#FFF5ED] sm:w-auto"
-                >
-                  Book a site survey
-                </Link>
-                <Link
-                  href="/partners"
-                  className="inline-flex w-full items-center justify-center rounded-full border border-white/55 px-7 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
-                >
-                  Partners
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative mx-auto w-full max-w-sm">
-              <motion.div
-                animate={reduce ? undefined : { y: [0, -10, 0] }}
-                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Image
-                  src="/orango_cup.png"
-                  alt=""
-                  width={380}
-                  height={380}
-                  className="relative z-[1] mx-auto h-auto w-[70%] object-contain"
-                />
-              </motion.div>
-              <motion.div
-                animate={reduce ? undefined : { y: [0, 8, 0], rotate: [6, 10, 6] }}
-                transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -right-2 bottom-4 w-28 md:w-36"
-              >
-                <Image
-                  src="/orange3.png"
-                  alt=""
-                  width={200}
-                  height={200}
-                  className="h-auto w-full"
-                />
-              </motion.div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {models.map((model, i) => (
+        <div className="grid gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
+          {blocks.map((block, i) => (
             <motion.article
-              key={model.title}
-              initial={reduce ? false : { opacity: 0, y: 16 }}
+              key={block.id}
+              initial={reduce ? false : { opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-              whileHover={reduce ? undefined : { y: -5 }}
-              className="rounded-[1.6rem] border border-[#8B3410]/8 bg-white p-7"
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ delay: i * 0.08, duration: 0.45 }}
+              className={`relative flex flex-col overflow-hidden rounded-[1.6rem] p-7 sm:rounded-[1.85rem] sm:p-8 md:p-9 ${
+                block.primary
+                  ? "bg-[#EE6F28] text-white"
+                  : "border border-[#8B3410]/10 bg-[#FFFAF6] text-[#8B3410]"
+              }`}
             >
-              <p className="text-[12px] font-semibold tracking-[0.16em] text-[#EE6F28]">
-                {model.kicker}
-              </p>
-              <h3 className="mt-3 text-[1.25rem] font-semibold tracking-[-0.02em] text-[#8B3410]">
-                {model.title}
-              </h3>
-              <p className="mt-2 text-[14px] leading-relaxed text-[#8B3410]/65">
-                {model.copy}
-              </p>
+              {block.primary ? (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(145deg, #FF9A4A 0%, #F07A32 48%, #EE6F28 100%)",
+                  }}
+                />
+              ) : null}
+
+              <div className="relative z-[1] flex h-full flex-col">
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-[0.2em] sm:text-[12px] ${
+                    block.primary ? "text-[#FFE0B8]" : "text-[#EE6F28]"
+                  }`}
+                >
+                  {block.kicker}
+                </p>
+                <h3 className="mt-3 text-[clamp(1.45rem,2.8vw,2.05rem)] font-semibold leading-[1.12] tracking-[-0.03em]">
+                  {block.title}
+                </h3>
+                <p
+                  className={`mt-4 flex-1 text-[15px] leading-relaxed sm:text-[16px] ${
+                    block.primary ? "text-white/88" : "text-[#8B3410]/70"
+                  }`}
+                >
+                  {block.copy}
+                </p>
+                <div className="mt-8">
+                  <Link
+                    href={block.href}
+                    className={`inline-flex w-full items-center justify-center rounded-full px-7 py-3.5 text-[14px] font-semibold transition-colors sm:w-auto sm:text-[15px] ${
+                      block.primary
+                        ? "bg-white text-[#8B3410] hover:bg-[#FFF5ED]"
+                        : "bg-[#EE6F28] text-white hover:bg-[#d45a18]"
+                    }`}
+                  >
+                    {block.cta}
+                  </Link>
+                </div>
+              </div>
             </motion.article>
           ))}
         </div>
