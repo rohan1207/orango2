@@ -1,11 +1,15 @@
 "use client";
 
 /**
- * Scroll-scrubbed frame hero — sticky track (no GSAP pin).
- * Pass frameSet="home1" | "home3" | "home4" for separate folder sets (no conflict).
+ * Scroll-scrubbed frame hero — Drip-style smoothness with hard pin:
+ * - Wait for ALL frames before unlocking page scroll
+ * - GSAP pin + scrub so fast scroll cannot skip past the sequence
+ * - rAF FRAME_LERP = 0.13 for silky frame glide
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Preloader from "./Preloader";
 import {
   DEFAULT_FRAME_SET,
@@ -13,21 +17,28 @@ import {
   drawFrame,
   folderFromWidth,
   getFrameSet,
-  maxContiguousLoaded,
   nearestLoaded,
   preloadFrames,
 } from "@/lib/frames";
 
-/** Loose exponential follow — cinematic flow, sharp frames (no blur). */
-function easeToward(current, target, dt, lambda) {
-  const delta = target - current;
-  if (Math.abs(delta) < 0.0008) return target;
-  return current + delta * (1 - Math.exp(-lambda * dt));
+gsap.registerPlugin(ScrollTrigger);
+
+/** ScrollTrigger: seconds for playhead to ease toward scroll */
+const SCROLL_SCRUB_SMOOTH_SEC = 0.55;
+/** rAF lerp toward fractional frame target; lower = silkier */
+const FRAME_LERP = 0.13;
+/** Viewport-heights of pin distance per ~25 frames (300 → ~12 screens) */
+const VH_PER_25_FRAMES = 1;
+
+function pinScrollDistance(frameCount) {
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const screens = Math.max(10, Math.ceil(frameCount / 25) * VH_PER_25_FRAMES);
+  return Math.round(vh * screens);
 }
 
 export default function New3dScrollHero({
   frameSet = DEFAULT_FRAME_SET,
-  /** When true (or set.requireAll), page stays on preloader until 100% frames load */
+  /** When true, wait until 100% frames. Default follows set.requireAll. */
   waitForAllFrames,
   /** Landing already warmed frames — no second full-screen preloader */
   skipPreloader = false,
@@ -35,7 +46,9 @@ export default function New3dScrollHero({
   const set = getFrameSet(frameSet);
   const totalFrames = set.total;
   const waitForAll =
-    waitForAllFrames != null ? Boolean(waitForAllFrames) : Boolean(set.requireAll);
+    waitForAllFrames != null
+      ? Boolean(waitForAllFrames)
+      : Boolean(set.requireAll);
 
   const trackRef = useRef(null);
   const stageRef = useRef(null);
@@ -46,16 +59,12 @@ export default function New3dScrollHero({
   const folderRef = useRef(set.desktop);
   const unsubRef = useRef(null);
   const targetRef = useRef(0);
-  const smoothedTargetRef = useRef(0);
   const displayedRef = useRef(0);
   const sizeRef = useRef({ w: 1, h: 1 });
   const lastPaintedRef = useRef(-1);
-  const dirtyRef = useRef(true);
   const modeRef = useRef("cover");
   const unlockedRef = useRef(false);
-  const lastTsRef = useRef(0);
   const isMobileRef = useRef(false);
-  const maxContigRef = useRef(0);
   const totalRef = useRef(totalFrames);
   const setIdRef = useRef(frameSet);
   const waitAllRef = useRef(waitForAll);
@@ -85,22 +94,14 @@ export default function New3dScrollHero({
     if (!session) return false;
     const total = session.total || totalRef.current;
     const loaded = session.loaded || 0;
-    const contig = session.maxContiguous ?? -1;
-    const ratio = total ? loaded / total : 0;
-    const readyRatio = session.readyRatio ?? 0.5;
-
-    if (waitAllRef.current) {
-      return (
-        (loaded >= total && contig >= total - 1) || loaded >= total
-      );
+    // Always require every frame before traditional page scroll
+    if (waitAllRef.current || set.requireAll) {
+      return loaded >= total && Boolean(session.frames?.[0]);
     }
-
-    // Smooth entry: unlock once ~50% is contiguous / ready; rest keeps loading
+    const entry = session.readyRatio ?? set.readyRatio ?? 1;
     return (
-      session.ready ||
-      ratio >= readyRatio ||
-      contig >= Math.floor(total * readyRatio) - 1 ||
-      loaded >= total
+      Boolean(session.frames?.[0]) &&
+      loaded >= Math.ceil(total * entry)
     );
   };
 
@@ -110,26 +111,13 @@ export default function New3dScrollHero({
     sessionRef.current = session;
     framesRef.current = session.frames;
     if (session.total) totalRef.current = session.total;
-    maxContigRef.current = Math.max(0, session.maxContiguous ?? 0);
     if (unsubRef.current) unsubRef.current();
 
-    unsubRef.current = session.subscribe(
-      ({ ratio, maxContiguous }) => {
-        dirtyRef.current = true;
-        if (typeof maxContiguous === "number" && maxContiguous >= 0) {
-          maxContigRef.current = maxContiguous;
-        } else {
-          maxContigRef.current = Math.max(
-            0,
-            maxContiguousLoaded(session.frames),
-          );
-        }
-        // Keep total in sync with the live session
-        if (session.total) totalRef.current = session.total;
-        setLoadRatio(ratio);
-        if (canUnlock(session)) unlock(skipPreloaderRef.current);
-      },
-    );
+    unsubRef.current = session.subscribe(({ ratio }) => {
+      if (session.total) totalRef.current = session.total;
+      setLoadRatio(ratio);
+      if (canUnlock(session)) unlock(skipPreloaderRef.current);
+    });
 
     if (canUnlock(session)) unlock(true);
   };
@@ -147,30 +135,27 @@ export default function New3dScrollHero({
     setReady(false);
     setLoaderGone(skipPreloader);
     setLoadRatio(0);
+    targetRef.current = 0;
+    displayedRef.current = 0;
+    lastPaintedRef.current = -1;
     bindSession(folderFromWidth(window.innerWidth, frameSet));
 
-    // Full-load pages: long failsafe only if still incomplete (broken network)
-    const failMs = waitForAll ? 90000 : 14000;
+    // Only bail if nearly complete — never unlock a half-loaded sequence
     const failSafe = window.setTimeout(() => {
       const session = sessionRef.current;
-      if (waitAllRef.current) {
-        // Only bail if we already have a usable contiguous run
-        if (
-          session &&
-          session.loaded >= Math.floor(session.total * 0.92)
-        ) {
-          unlock(skipPreloaderRef.current);
-        }
-        return;
+      if (
+        session &&
+        session.loaded >= session.total &&
+        session.frames?.[0]
+      ) {
+        unlock(skipPreloaderRef.current);
       }
-      unlock(skipPreloaderRef.current);
-    }, failMs);
+    }, 120000);
 
     return () => {
       window.clearTimeout(failSafe);
       if (unsubRef.current) unsubRef.current();
     };
-    // frameSet is fixed per page mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frameSet, waitForAll, skipPreloader]);
 
@@ -193,7 +178,7 @@ export default function New3dScrollHero({
       const canvas = canvasRef.current;
       const stage = stageRef.current;
       if (!canvas || !stage || !canvas.isConnected) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.max(1, stage.clientWidth || window.innerWidth);
       const h = Math.max(1, stage.clientHeight || window.innerHeight);
       sizeRef.current = { w, h };
@@ -217,7 +202,6 @@ export default function New3dScrollHero({
           ctxRef.current = ctx;
         }
       }
-      dirtyRef.current = true;
     } catch {
       /* never crash scroll path */
     }
@@ -233,7 +217,6 @@ export default function New3dScrollHero({
       const img = nearestLoaded(framesRef.current, frameIndex);
       drawFrame(ctx, img, w, h, modeRef.current);
       lastPaintedRef.current = Math.round(frameIndex);
-      dirtyRef.current = false;
     } catch {
       /* swallow */
     }
@@ -245,52 +228,31 @@ export default function New3dScrollHero({
     paint(displayedRef.current);
   }, [ready]);
 
+  // rAF lerp — Drip FRAME_LERP = 0.13
   useEffect(() => {
+    if (!ready) return undefined;
     let raf = 0;
     let alive = true;
-    lastTsRef.current = 0;
     let boostTick = 0;
 
-    const tick = (ts) => {
+    const tick = () => {
       if (!alive) return;
       try {
-        const prevTs = lastTsRef.current || ts;
-        const dt = Math.min(0.05, Math.max(0.001, (ts - prevTs) / 1000));
-        lastTsRef.current = ts;
-
-        // Full range 0 .. total-1 — never freeze mid-sequence on contig holes
         const lastFrame = Math.max(0, (totalRef.current || 1) - 1);
-        const rawTarget = Math.min(
-          Math.max(0, targetRef.current),
-          lastFrame,
-        );
+        const target = Math.min(Math.max(0, targetRef.current), lastFrame);
+        const current = displayedRef.current;
+        const next = current + (target - current) * FRAME_LERP;
+        const snapped = Math.abs(next - target) < 0.04 ? target : next;
+        displayedRef.current = snapped;
 
-        // Dual-stage loose ease: absorb wheel ticks, then glide the display
-        const targetLambda = isMobileRef.current ? 7 : 6;
-        smoothedTargetRef.current = easeToward(
-          smoothedTargetRef.current,
-          rawTarget,
-          dt,
-          targetLambda,
-        );
-
-        const displayLambda = isMobileRef.current ? 9 : 8;
-        const next = easeToward(
-          displayedRef.current,
-          smoothedTargetRef.current,
-          dt,
-          displayLambda,
-        );
-        displayedRef.current = next;
-
-        const rounded = Math.round(next);
-        if (dirtyRef.current || rounded !== lastPaintedRef.current) {
-          paint(next);
+        const displayFrame = Math.min(Math.round(snapped), lastFrame);
+        if (displayFrame !== lastPaintedRef.current) {
+          paint(displayFrame);
         }
 
         boostTick += 1;
         if (boostTick % 6 === 0) {
-          sessionRef.current?.boostAround?.(next, 40);
+          sessionRef.current?.boostAround?.(snapped, 40);
         }
       } catch {
         /* ignore */
@@ -303,42 +265,49 @@ export default function New3dScrollHero({
       alive = false;
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [ready]);
 
+  /**
+   * Pin the viewport-sized stage for a long scroll runway.
+   * Fast wheel/trackpad only advances pin progress — cannot jump to sections below
+   * until the full sequence distance is consumed (same idea as Drip's tall runway).
+   */
   useLayoutEffect(() => {
-    if (!ready || !trackRef.current) return undefined;
+    if (!ready || !stageRef.current || !trackRef.current) return undefined;
 
-    const track = trackRef.current;
+    const stage = stageRef.current;
+    let st = null;
 
-    let scrollRaf = 0;
-    const syncFromScroll = () => {
-      try {
-        const totalScroll = Math.max(
-          1,
-          track.offsetHeight - window.innerHeight,
-        );
-        const top = track.getBoundingClientRect().top;
-        const scrolled = Math.min(totalScroll, Math.max(0, -top));
-        const p = Math.min(1, Math.max(0, scrolled / totalScroll));
-        const frameCount = Math.max(1, totalRef.current);
-        // Direct scroll → frame map (canvas RAF eases lightly)
-        targetRef.current = p * (frameCount - 1);
-        dirtyRef.current = true;
-      } catch {
-        /* ignore */
-      }
-    };
+    const attach = () => {
+      if (st) st.kill();
+      const lastFrame = Math.max(0, (totalRef.current || 1) - 1);
+      const frames = totalRef.current || 1;
 
-    const onScroll = () => {
-      if (scrollRaf) return;
-      scrollRaf = requestAnimationFrame(() => {
-        scrollRaf = 0;
-        syncFromScroll();
+      st = ScrollTrigger.create({
+        trigger: stage,
+        start: "top top",
+        end: () => `+=${pinScrollDistance(frames)}`,
+        pin: true,
+        pinSpacing: true,
+        anticipatePin: 1,
+        scrub: SCROLL_SCRUB_SMOOTH_SEC,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          targetRef.current = self.progress * lastFrame;
+        },
       });
+
+      targetRef.current = 0;
+      displayedRef.current = 0;
+      lastPaintedRef.current = -1;
+      sizeCanvas();
+      paint(0);
+      ScrollTrigger.refresh();
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    syncFromScroll();
+    const bootOuter = requestAnimationFrame(() => {
+      requestAnimationFrame(attach);
+    });
 
     let resizeTimer = 0;
     const onResize = () => {
@@ -353,25 +322,35 @@ export default function New3dScrollHero({
             bindSession(nextFolder);
           }
           sizeCanvas();
-          paint(displayedRef.current);
-          syncFromScroll();
+          lastPaintedRef.current = -1;
+          paint(Math.round(displayedRef.current));
+          ScrollTrigger.refresh();
         } catch {
           /* ignore */
         }
       }, 160);
     };
+
     window.addEventListener("resize", onResize, { passive: true });
     window.visualViewport?.addEventListener("resize", onResize, {
       passive: true,
     });
 
+    const onPageShow = (e) => {
+      if (e.persisted) attach();
+      ScrollTrigger.refresh();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(bootOuter);
       window.removeEventListener("resize", onResize);
       window.visualViewport?.removeEventListener("resize", onResize);
+      window.removeEventListener("pageshow", onPageShow);
       window.clearTimeout(resizeTimer);
-      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      if (st) st.kill();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   return (
@@ -380,11 +359,7 @@ export default function New3dScrollHero({
         <Preloader
           progress={loadRatio}
           ready={ready}
-          message={
-            waitForAll
-              ? "Loading all frames for a smooth scroll…"
-              : "Preparing a smooth scroll experience…"
-          }
+          message="Loading all frames for a smooth scroll…"
         />
       ) : null}
 
@@ -396,7 +371,7 @@ export default function New3dScrollHero({
         <div
           ref={stageRef}
           id="home-scroll-hero"
-          className="sticky top-0 h-dvh w-full overflow-hidden bg-[#FFFAF6]"
+          className="relative h-dvh w-full overflow-hidden bg-[#FFFAF6]"
         >
           <canvas
             ref={canvasRef}

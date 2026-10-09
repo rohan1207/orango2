@@ -23,7 +23,7 @@ export default function RootHome() {
 
   return (
     <>
-      <New3dScrollHero frameSet="home4" skipPreloader />
+      <New3dScrollHero frameSet="home4" waitForAllFrames skipPreloader />
       <HomePageRest />
     </>
   );

@@ -15,8 +15,8 @@ const HOME_FRAME_SET = "home4";
 const ABSOLUTE_FAILSAFE_MS = 120000;
 
 /**
- * Landing video + full frame preload (81 desktop).
- * Leaves only when BOTH the video finished AND all 81 frames are really loaded.
+ * Landing video + full frame preload.
+ * Leaves only when BOTH the video finished AND all 300 frames are loaded.
  */
 export default function LandingIntro({ onComplete }) {
   const videoRef = useRef(null);
@@ -74,13 +74,19 @@ export default function LandingIntro({ onComplete }) {
           if (t > 0 && videoEndedRef.current) {
             setSliderPct(Math.round((loaded / t) * 100));
           }
-          if (t > 0 && loaded >= t) markFramesReady();
+          if (t > 0 && loaded >= t && session.frames?.[0]) {
+            markFramesReady();
+          }
         });
       }
 
       session?.promise?.then?.(() => {
         if (cancelled || doneRef.current) return;
-        if (session.total > 0 && session.loaded >= session.total) {
+        if (
+          session.total > 0 &&
+          session.loaded >= session.total &&
+          session.frames?.[0]
+        ) {
           markFramesReady();
         }
       });

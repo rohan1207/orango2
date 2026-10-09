@@ -90,15 +90,10 @@ body {
   }
 }
 
-/* Sticky frame-sequence hero — tall track = more scroll per frame (204 frames) */
+/* Pin distance is created by GSAP ScrollTrigger (pinSpacing) — track is one viewport */
 .hero-frame-track {
-  height: 1400vh;
-}
-
-@media (min-width: 768px) {
-  .hero-frame-track {
-    height: 1800vh;
-  }
+  height: auto;
+  min-height: 100dvh;
 }
 
 /* New3dScrollHero uses GSAP scrub on sticky track — no pin spacer */
